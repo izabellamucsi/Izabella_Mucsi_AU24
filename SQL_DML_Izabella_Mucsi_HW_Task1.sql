@@ -4,7 +4,7 @@
 /* 1.1 Choose your top-3 favorite movies and add them to the 'film' table  */
 /* 1.2 Fill in rental rates with 4.99, 9.99 and 19.99 and rental durations with 1, 2 and 3 weeks respectively. */
 /* 1.3 Add the actors who play leading roles in your favorite movies to the 'actor' and 'film_actor' tables (6 or more actors in total).  */ */
-  SELECT * FROM film f ORDER BY film_id
+
 --first favorite movie 
 
 WITH defined_rental_specification AS (
