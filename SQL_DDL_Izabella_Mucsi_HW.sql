@@ -20,12 +20,12 @@ COMMIT;
 BEGIN;
 DROP TABLE IF EXISTS campaign.Country CASCADE;		
 CREATE TABLE IF NOT EXISTS campaign.Country (		
-	Country_id serial NOT NULL PRIMARY KEY,	
+	Country_id serial  PRIMARY KEY,	
 	Country_name varchar(20) NOT NULL);			
 		
 DROP TABLE IF EXISTS campaign.City_demographics CASCADE;		
 CREATE TABLE IF NOT EXISTS campaign.City_demographics (		
-	City_id serial NOT NULL PRIMARY KEY,	
+	City_id serial  PRIMARY KEY,	
 	City_name varchar(20) NOT NULL,	
 	Country_id integer,	
 	Population integer,	
@@ -37,14 +37,14 @@ CREATE INDEX IXFK_City_demographics_Country ON campaign.City_demographics (Count
 		
 DROP TABLE IF EXISTS campaign.Location CASCADE;		
 CREATE TABLE IF NOT EXISTS campaign.Location (		
-	Location_id serial NOT NULL PRIMARY KEY,	
+	Location_id serial PRIMARY KEY,	
 	Location_name varchar(50),	
 	Location_address varchar(50));		
 		
 		
 DROP TABLE IF EXISTS campaign.Events CASCADE;		
 CREATE TABLE  IF NOT EXISTS campaign.Events (		
-	Event_id serial NOT NULL PRIMARY KEY,	
+	Event_id serial PRIMARY KEY,	
 	Event_name varchar(20) NOT NULL,	
 	Location_id integer,	
 	Event_date date NOT NULL CHECK (Event_date >= '2000-01-01'),	
@@ -58,7 +58,7 @@ CREATE INDEX IXFK_Events_Location ON campaign.Events (Location_id ASC);
 		
 DROP TABLE IF EXISTS campaign.Candidates CASCADE;		
 CREATE TABLE  IF NOT EXISTS campaign.Candidates (		
-	Candidate_id serial NOT NULL PRIMARY KEY,	
+	Candidate_id serial PRIMARY KEY,	
 	Candidate_name varchar(20) NOT NULL,	
 	Political_party_name varchar(50) NOT NULL);
 CREATE INDEX IXFK_Candidates_m2m_Event_participation ON campaign.Candidates (Candidate_id ASC);		
@@ -66,7 +66,7 @@ CREATE INDEX IXFK_Candidates_m2m_Event_participation ON campaign.Candidates (Can
 		
 DROP TABLE IF EXISTS campaign.Voters CASCADE;		
 CREATE TABLE  IF NOT EXISTS campaign.Voters (		
-	Voter_id char(13) NOT NULL PRIMARY KEY,	
+	Voter_id char(13) PRIMARY KEY,	
 	Email_address varchar(50) NOT NULL UNIQUE CHECK (Email_address LIKE '%@%.%'),	
 	Voter_name varchar(50) NOT NULL,	
 	Age smallint,	
@@ -78,7 +78,7 @@ CREATE TABLE  IF NOT EXISTS campaign.Voters (
 		
 DROP TABLE IF EXISTS campaign.Campaign_donors CASCADE;		
 CREATE TABLE IF NOT EXISTS  campaign.Campaign_donors (		
-	Donor_id char(13) NOT NULL PRIMARY KEY,	
+	Donor_id char(13) PRIMARY KEY,	
 	Donor_name varchar(20) NOT NULL,	
 	Phone VARCHAR(20),	
 	Email_address varchar(50) NOT NULL UNIQUE CHECK (Email_address LIKE '%@%.%'),	
@@ -88,7 +88,7 @@ CREATE TABLE IF NOT EXISTS  campaign.Campaign_donors (
 				
 DROP TABLE IF EXISTS campaign.Campaign_volunteers CASCADE;		
 CREATE TABLE  IF NOT EXISTS campaign.Campaign_volunteers (		
-	Volunteer_id char(13) NOT NULL PRIMARY KEY,	
+	Volunteer_id char(13)  PRIMARY KEY,	
 	Volunteer_name varchar(50) NOT NULL,	
 	Phone VARCHAR(20),	
 	Email_address varchar(50) NOT NULL UNIQUE CHECK (Email_address LIKE '%@%.%'),	
@@ -100,14 +100,14 @@ CREATE INDEX IXFK_Campaign_volunteers_City_demographics ON campaign.Campaign_vol
 		
 DROP TABLE IF EXISTS campaign.Campaign_tasks CASCADE;		
 CREATE TABLE IF NOT EXISTS campaign.Campaign_tasks (		
-	Task_id serial NOT NULL PRIMARY KEY,	
+	Task_id serial  PRIMARY KEY,	
 	Task_description text NOT NULL,	
 	Priority smallint CHECK (Priority IN (1, 2, 3, 4, 5)));		
 		
 		
 DROP TABLE IF EXISTS campaign.Contribution CASCADE;		
 CREATE TABLE  IF NOT EXISTS campaign.Contribution (		
-	Contribution_id serial NOT NULL PRIMARY KEY,	
+	Contribution_id serial PRIMARY KEY,	
 	Contribution_type varchar(20),	
 	Campaign_volunteer_id char(13),	
 	Campaign_donor_id char(13),	
@@ -122,7 +122,7 @@ CREATE INDEX IXFK_Contribution_Campaign_volunteers ON campaign.Contribution (Cam
 		
 DROP TABLE IF EXISTS campaign.Finances CASCADE;		
 CREATE TABLE  IF NOT EXISTS campaign.Finances (		
-	Transaction_reference Varchar(10) NOT NULL PRIMARY KEY,	
+	Transaction_reference Varchar(10) PRIMARY KEY,	
 	Transaction_type varchar(20) NOT NULL,	
 	Incoming_payment NUMERIC CHECK (Incoming_payment >= 0),	
 	Outgoing_payment NUMERIC CHECK (Outgoing_payment >= 0),	
@@ -139,7 +139,7 @@ CREATE INDEX IXFK_Finances_Events ON campaign.Finances (Event_id ASC);
 		
 DROP TABLE IF EXISTS campaign.Surveys CASCADE;		
 CREATE TABLE  IF NOT EXISTS campaign.Surveys (		
-	Survey_id serial NOT NULL PRIMARY KEY,	
+	Survey_id serial PRIMARY KEY,	
 	Survey_type varchar(20) NULL CHECK (Survey_type IN ('online', 'face to face', 'via phone', 'paper survey')),	
 	Survey_date date CHECK (Survey_date >= '2000-01-01'),	
 	Candidate_id integer NOT NULL,	
@@ -150,7 +150,7 @@ CREATE INDEX IXFK_Surveys_Candidates ON campaign.Surveys (Candidate_id ASC);
 		
 DROP TABLE IF EXISTS campaign.Survey_result CASCADE;		
 CREATE TABLE  IF NOT EXISTS campaign.Survey_result (		
-	Survey_result_id serial NOT NULL PRIMARY KEY,	
+	Survey_result_id serial PRIMARY KEY,	
 	Answer_date date NOT NULL CHECK (Answer_date >= '2000-01-01'),	
 	Voter_id char(13),	
 	Candidate_id integer,	
@@ -162,8 +162,8 @@ CREATE INDEX IXFK_Survey_result_Voters ON campaign.Survey_result (Voter_id ASC);
 		
 DROP TABLE IF EXISTS campaign.m2m_Contribution_event CASCADE;		
 CREATE TABLE  IF NOT EXISTS campaign.m2m_Contribution_event (		
-	Contribution_id integer NOT NULL,	
-	Event_id integer NOT NULL,	
+	Contribution_id integer,	
+	Event_id integer,	
 	Value NUMERIC CHECK (Value >= 0),	
 	PRIMARY KEY (Contribution_id, Event_id),	
 	CONSTRAINT FK_m2m_Contribution_event_Contribution FOREIGN KEY (Contribution_id) REFERENCES campaign.Contribution (Contribution_id) ON DELETE RESTRICT ON UPDATE CASCADE,	
@@ -174,8 +174,8 @@ CREATE INDEX IXFK_m2m_Contribution_event_Events ON campaign.m2m_Contribution_eve
 		
 DROP TABLE IF EXISTS campaign.m2m_Event_participation CASCADE;		
 CREATE TABLE  IF NOT EXISTS campaign.m2m_Event_participation (		
-	Event_id integer NOT NULL,	
-	Candidate_id integer NOT NULL,	
+	Event_id integer,	
+	Candidate_id integer,	
 	Role varchar(20),	
 	Participation_date date CHECK (Participation_date >= '2000-01-01'),	
 	PRIMARY KEY (Event_id, Candidate_id),	
@@ -185,8 +185,8 @@ CREATE INDEX IXFK_m2m_Event_participation_Events ON campaign.m2m_Event_participa
 		
 DROP TABLE IF EXISTS campaign.m2m_Volunteers_tasks CASCADE;		
 CREATE TABLE IF NOT EXISTS  campaign.m2m_Volunteers_tasks (		
-	Volunteer_id char(13) NOT NULL,	
-	Task_id integer NOT NULL,	
+	Volunteer_id char(13),	
+	Task_id integer,	
 	Status varchar(20) NOT NULL CHECK (Status IN ('Not yet started', 'In progress', 'Finished')),	
 	PRIMARY KEY (Volunteer_id, Task_id),	
 	CONSTRAINT FK_m2m_Volunteers_tasks_Campaign_tasks FOREIGN KEY (Task_id) REFERENCES campaign.Campaign_tasks (Task_id) ON DELETE RESTRICT ON UPDATE CASCADE,	
