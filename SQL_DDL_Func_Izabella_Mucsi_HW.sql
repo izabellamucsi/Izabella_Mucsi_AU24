@@ -4,18 +4,18 @@
    The most recent payment_date in the payment table was on the 31st of May in 2017, therefore the the view for the current quarter will be empty.*/
 
 DROP VIEW IF EXISTS sales_revenue_by_category_qtr;
-CREATE VIEW sales_revenue_by_category_qtr AS
+CREATE OR REPLACE  VIEW sales_revenue_by_category_qtr AS
 SELECT 
 c.category_id,
 c.name,
 sum(p.amount) AS sales_revenue
 FROM public.payment p 
-LEFT JOIN public.rental r ON p.rental_id = r.rental_id
-LEFT JOIN public.inventory i ON r.inventory_id = i.inventory_id
-LEFT JOIN public.film_category fc ON i.film_id = fc.film_id
-LEFT JOIN public.category c ON fc.category_id = c.category_id
-WHERE p.payment_date  >= date_trunc('quarter', CURRENT_DATE)						 -- Start of the current quarter
-  AND p.payment_date  < date_trunc('quarter', CURRENT_DATE) + INTERVAL '3 months'	 -- End of the current quarter
+INNER JOIN public.rental r ON p.rental_id = r.rental_id
+INNER JOIN public.inventory i ON r.inventory_id = i.inventory_id
+INNER JOIN public.film_category fc ON i.film_id = fc.film_id
+INNER JOIN public.category c ON fc.category_id = c.category_id
+WHERE EXTRACT (YEAR FROM p.payment_date) = EXTRACT (YEAR FROM current_date) 				
+  AND EXTRACT (quarter FROM p.payment_date) = EXTRACT (quarter FROM current_date)
 GROUP BY c.category_id
 HAVING SUM(p.amount) > 0
 ORDER BY sales_revenue DESC;
@@ -28,7 +28,7 @@ SELECT * FROM public.sales_revenue_by_category_qtr;
    If the query doesn't find any rows then the raise notice indicates that there are no revenues for the selected period otherwise it will return the results. */
 
 DROP function IF EXISTS sales_revenue_by_category_qtr;
-CREATE OR REPLACE FUNCTION sales_revenue_by_category_qtr(p_quarter INT, p_year INT)
+CREATE OR REPLACE FUNCTION sales_revenue_by_category_qtr(year_quarter INT)
 RETURNS TABLE (
 category TEXT,
 revenue NUMERIC)
@@ -44,8 +44,7 @@ LEFT JOIN public.inventory i ON r.inventory_id = i.inventory_id
 LEFT JOIN public.film_category fc ON i.film_id = fc.film_id
 LEFT JOIN public.category c ON fc.category_id = c.category_id
 WHERE
-EXTRACT(QUARTER FROM p.payment_date) = p_quarter
-AND EXTRACT(YEAR FROM p.payment_date) = p_year
+concat (EXTRACT(YEAR FROM p.payment_date),extract(QUARTER FROM p.payment_date))::integer = year_quarter
 GROUP BY  c.category_id;
 IF FOUND 
 THEN
@@ -57,7 +56,7 @@ END;
 $$ LANGUAGE plpgsql;
 
 --Checking the result of the function
-SELECT * FROM public.sales_revenue_by_category_qtr (2,2017);
+SELECT * FROM public.sales_revenue_by_category_qtr (20172);
 
 
 /* Task 3. This function calculates the number of film rentals as an indicator of the movie popularity for each country.
@@ -203,18 +202,12 @@ SELECT * FROM public.films_in_stock_by_title('%love%');
 
 
 DROP FUNCTION IF EXISTS new_movie(movie_title TEXT, movie_language TEXT, movie_release_year YEAR);
-CREATE OR REPLACE FUNCTION new_movie(movie_title TEXT,movie_language TEXT DEFAULT 'Klingon',movie_release_year YEAR DEFAULT NULL)
+CREATE OR REPLACE FUNCTION new_movie(movie_title TEXT,movie_language TEXT DEFAULT 'Klingon',movie_release_year YEAR DEFAULT EXTRACT(YEAR FROM current_date)::YEAR)
 RETURNS TABLE(film_id INT, title TEXT, language_id smallint, release_year YEAR, rental_duration SMALLINT, rental_rate NUMERIC, replacement_cost NUMERIC)
 AS $$
 DECLARE
-selected_language_id smallint;															--Storing the language_id for the selected language, either provided of default
-release_year YEAR;																		--Storing the release year, either provided of default
+selected_language_id smallint;																													--Storing the release year, either provided of default
 BEGIN
-IF movie_release_year IS NULL THEN
-   release_year := EXTRACT(YEAR FROM CURRENT_DATE)::YEAR;
-ELSE
-   release_year := movie_release_year;
-END IF;
 IF NOT EXISTS (
         SELECT 1 FROM public."language" l WHERE lower(l.name) = lower(movie_language))
 THEN
@@ -240,7 +233,7 @@ RETURN QUERY																			--Retreiving the rental related data and insertin
 		    	SELECT 
 		        movie_title,
 		        selected_language_id,
-		        release_year,
+		        movie_release_year,
 		        rd.rental_duration,
 		        rd.rental_rate,
 		        rcd.replacement_cost
@@ -252,6 +245,7 @@ RETURN QUERY																			--Retreiving the rental related data and insertin
 				        WHERE LOWER(f.title) = LOWER(movie_title))
 		    			RETURNING 
 		        		film.film_id, film.title, film.language_id,film.release_year, film.rental_duration, film.rental_rate, film.replacement_cost;
+						RAISE NOTICE 'Film is added to database';
 						END;
 						$$ LANGUAGE plpgsql;
 --Testing the function
