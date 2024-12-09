@@ -36,37 +36,78 @@ SELECT * FROM sh.sales_product_category('1998-01-01','1999-02-02');
 SELECT * FROM sh.sales_product_category('1998','1999');
 
 /*Task 3.2 Calculate the average sales quantity by region for a particular product.
- * The following query calculates the average quantity of products sold per region for each product. In the first step, (qty_sold_per_product) it calculates the total quantity sold per product and 
- * the number of distinct regions each product was sold in (qty_sold_per_region).The final select statement divides the total quantity by the number of regions to get the average for each product.*/
+ * The function calculates the average sales quantity per region for a specified product and returns both the average sales quantity and the product ID.
+ * The calculation was done by using ctes. In the first step, (qty_sold_per_product) it calculates the total quantity sold per product and 
+ * the number of distinct regions each product was sold in (qty_sold_per_region).The final select statement divides the total quantity by the number of regions to get the average for each product.
+ * If the input product ID does not match any records, a raise notice is displayed indicating that the product ID was not found.*/
 
-WITH qty_sold_per_product AS (
-SELECT sum(s.quantity_sold) AS qty_product , s.prod_id 
-FROM sh.sales s 
-GROUP BY s.prod_id 
-ORDER BY s.prod_id),
- qty_sold_per_region as(
-SELECT  count(DISTINCT c2.country_region) AS number_of_regions,s.prod_id 
-FROM sh.sales s 
-INNER JOIN sh.customers c ON s.cust_id = c.cust_id 
-INNER JOIN sh.countries c2 ON c2.country_id = c.country_id 
-GROUP BY s.prod_id
-ORDER BY s.prod_id)
-SELECT  (spp.qty_product/spr.number_of_regions) AS average_sales_quantity, spp.prod_id
-FROM qty_sold_per_product spp
-INNER JOIN qty_sold_per_region spr ON spr.prod_id = spp.prod_id;
+CREATE OR REPLACE FUNCTION sh.average_sales_quantity (IN p_product_id INTEGER) 
+RETURNS TABLE (
+	returned_avg_sales_quantity NUMERIC,
+	returned_product_id INTEGER) 
+LANGUAGE plpgsql 
+AS $$
+BEGIN
+    RETURN QUERY
+    WITH qty_sold_per_product AS (
+    SELECT 
+    SUM(s.quantity_sold) AS qty_product, 
+    s.prod_id
+    FROM sh.sales s 
+    WHERE p_product_id = s.prod_id 
+    GROUP BY s.prod_id ),
+    	qty_sold_per_region AS (
+        SELECT  
+        COUNT(DISTINCT c2.country_region) AS number_of_regions, 
+        s.prod_id
+        FROM sh.sales s 
+        INNER JOIN sh.customers c ON s.cust_id = c.cust_id 
+        INNER JOIN sh.countries c2 ON c2.country_id = c.country_id 
+        GROUP BY s.prod_id)
+	    	SELECT  
+	        (spp.qty_product / spr.number_of_regions) AS returned_avg_sales_quantity, 
+	        spp.prod_id AS returned_product_id
+	    	FROM qty_sold_per_product spp
+	    	INNER JOIN qty_sold_per_region spr ON spr.prod_id = spp.prod_id;
+    IF NOT FOUND THEN
+        RAISE NOTICE 'The product id % was not found', p_product_id;			
+    END IF;
+END;
+$$;
+
+SELECT * FROM sh.average_sales_quantity(14);
 
 
 /* Task 3.3 Find the top five customers with the highest total sales amount.
- * This query identifies the top 5 customers with the highest total sales by summing their sales amounts, then retrieves their customer IDs, names, and sales amounts, sorted in descending order.*/
+ * The sh.top_5_customers() function retrieves the top 5 customers based on their total sales amount, including their customer ID, full name, and total sales. Finding the top 5 sales value can 
+ * be solved by using the limit 5 clause or using a subquery. In case multiple customers have identical sales values I choose the second method, including a subquery.  */
 
-WITH top_5_sales_amount AS (SELECT sum(s.amount_sold) AS sales_amount
-FROM sh.sales s 
-GROUP BY s.cust_id
-ORDER BY sales_amount DESC
-LIMIT 5)
- SELECT c.cust_id, concat(c.cust_first_name, ' ', c.cust_last_name) AS customer_name, sum(s.amount_sold) AS sales_amount
- FROM sh.customers c 
- INNER JOIN sh.sales s ON s.cust_id = c.cust_id
-GROUP BY c.cust_id
-HAVING sum(s.amount_sold) IN (SELECT * FROM top_5_sales_amount)
-ORDER BY sales_amount desc;
+CREATE OR REPLACE FUNCTION sh.top_5_customers()
+RETURNS TABLE (
+    customer_id INTEGER,
+    customer_name TEXT,
+    sales_amount NUMERIC)
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    RETURN QUERY
+    SELECT 
+    c.cust_id AS customer_id,
+    CONCAT(c.cust_first_name, ' ', c.cust_last_name) AS customer_name,
+    SUM(s.amount_sold) AS sales_amount
+    FROM sh.customers c    
+    INNER JOIN sh.sales s  ON s.cust_id = c.cust_id
+    GROUP BY c.cust_id
+    HAVING SUM(s.amount_sold) >= (
+      SELECT MIN(sub.sales_amount)
+      FROM (
+            SELECT SUM(s2.amount_sold) AS sales_amount   --subquery for determining the top 5 highest value in case of tied rows
+            FROM sh.sales s2
+            GROUP BY s2.cust_id  
+            ORDER BY  sales_amount DESC 
+            LIMIT 5) AS sub)
+    ORDER BY sales_amount DESC;   
+END;
+$$;
+--Testing the function
+SELECT * FROM sh.top_5_customers();
