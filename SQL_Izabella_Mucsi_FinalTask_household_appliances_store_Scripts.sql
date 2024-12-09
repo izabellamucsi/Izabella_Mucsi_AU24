@@ -268,8 +268,10 @@ SELECT * FROM store.inventory_tracking it;
 SELECT * FROM store.product_suppliers ps; 
 
 /* Task 5.1 Create a function that updates data in one of your tables. 
- * The function, update_customer_table, allows to update a specific customer record in the store.customer table and retrieve the updated information using the returning clause.*/
+ * The function, update_customer_table, allows to update a specific customer record in the store.customer table and retrieve the updated information using the returning clause.
+ * I have updated the  function body to check the existence of the provided p_customer_id parameter in the store.customer table anf if no matching customer is found, a raise notice is displayed and the function won't perform any updates.*/
 
+--DROP FUNCTION store.new_record(text, date, int4);
 CREATE OR REPLACE FUNCTION update_customer_table( p_customer_id INT, p_column_name TEXT,p_new_value TEXT)
 RETURNS TABLE(
     result_customer_id INT,
@@ -282,24 +284,31 @@ AS $$
 DECLARE
     update_statement TEXT;
 BEGIN
+	IF NOT EXISTS (SELECT 1 FROM store.customer c WHERE p_customer_id = c.customer_id) THEN
+		RAISE NOTICE 'customer with the customer_id % parameter does not exist',p_customer_id;
+	RETURN;
+	ELSE
       update_statement := concat('UPDATE store.customer SET ', p_column_name, ' = ''',  p_new_value, '''', ' WHERE customer_id = ', p_customer_id, ';');
-    RAISE NOTICE 'The record has been updated';
-    EXECUTE update_statement;
-    RETURN QUERY 
-    SELECT 
+    	RAISE NOTICE 'The record has been updated';
+    	EXECUTE update_statement;
+    	RETURN QUERY 
+    	SELECT 
         c.customer_id AS result_customer_id, 
         c.first_name AS result_first_name,
         c.last_name AS result_last_name,
         c.phone AS result_phone, 
         c.email AS result_email
-    FROM 
+    	FROM 
         store.customer c
-    WHERE 
+    	WHERE 
         c.customer_id = customer_id;
+end if;
 END;
 $$;
 
-SELECT * FROM update_customer_table(3, 'phone', '812-022');
+
+
+SELECT * FROM update_customer_table(22, 'phone', '812-022');
 SELECT * FROM store.customer c;
 
 /*Task 5.2 Create a function that adds a new transaction to your transaction table.
@@ -376,7 +385,7 @@ ORDER BY quarter DESC;
    
 SELECT * FROM quarterly_analytics;
 
-/* Task 7. 7. Create a read-only role for the manager. This role should have permission to perform SELECT queries on the database tables, and also be able to log in.
+/* Task 7. Create a read-only role for the manager. This role should have permission to perform SELECT queries on the database tables, and also be able to log in.
  * The following anonymus DO block checks if the manager role exists and creates it if it doesn't, and then grants specific privileges on the household_store database and the store schema to the manager
  *  role if they haven't been granted already. Finally, a raise notice will be displayed to inform whether the role was created and privileges assigned.*/
 
