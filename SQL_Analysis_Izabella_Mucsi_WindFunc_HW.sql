@@ -132,8 +132,8 @@ GROUP BY s.cust_id, s.channel_id, t.calendar_year),
 		
 SELECT DISTINCT TO_CHAR(s.time_id, 'YYYY-MM') AS calendar_month_desc,
 p.prod_category,
-sum(SUM(s.amount_sold)) FILTER (WHERE c2.country_region = 'Americas') OVER (PARTITION BY p.prod_category,  TO_CHAR(s.time_id, 'YYYY-MM')) AS Americas_sales, 	-- Total sales for the Americas by category and month
-sum(SUM(s.amount_sold)) FILTER (WHERE c2.country_region = 'Europe') OVER (PARTITION BY p.prod_category, TO_CHAR(s.time_id, 'YYYY-MM')) AS Europe_sales			-- Total sales for Europe by category and month
+sum(SUM(s.amount_sold)) FILTER (WHERE lower(c2.country_region) = 'americas') OVER (PARTITION BY p.prod_category,  TO_CHAR(s.time_id, 'YYYY-MM')) AS Americas_sales, 	-- Total sales for the Americas by category and month
+sum(SUM(s.amount_sold)) FILTER (WHERE lower(c2.country_region) = 'europe') OVER (PARTITION BY p.prod_category, TO_CHAR(s.time_id, 'YYYY-MM')) AS Europe_sales			-- Total sales for Europe by category and month
 FROM sh.sales s
 INNER JOIN  sh.products p ON s.prod_id = p.prod_id
 INNER JOIN sh.customers c ON s.cust_id = c.cust_id
