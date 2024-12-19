@@ -112,37 +112,25 @@ ORDER BY p.prod_id;
     
 /*The second query uses GROUPS mode for calculating a 3 month moving average of sales values for each product. The GROUPS frame is used to make sure that each group of rows with the same prod_id is considered together, and only rows within the defined window meaning the current month and the next two months are considered in the calculation. */ 
 
-WITH product_sales AS (
 SELECT 
 p.prod_id,
-EXTRACT(YEAR FROM s.time_id) || ' ' || LPAD((EXTRACT(MONTH FROM s.time_id):: TEXT), 2, '0') AS month,
-SUM(s.amount_sold) AS total_sales
+EXTRACT(YEAR FROM s.time_id) || ' ' || LPAD((EXTRACT(MONTH FROM s.time_id)::TEXT), 2, '0') AS month,
+SUM(s.amount_sold) AS total_sales,
+ROUND(AVG(SUM(s.amount_sold)) OVER (PARTITION BY p.prod_id ORDER BY EXTRACT(YEAR FROM s.time_id), EXTRACT(MONTH FROM s.time_id)  GROUPS BETWEEN CURRENT ROW AND 2 FOLLOWING ), 2) AS moving_avg_sales
 FROM sh.sales s
 INNER JOIN sh.products p ON s.prod_id = p.prod_id
 WHERE EXTRACT(YEAR FROM s.time_id) = 2000
-GROUP BY p.prod_id, EXTRACT(YEAR FROM s.time_id), EXTRACT(MONTH FROM s.time_id))
-	SELECT 
-    ps.prod_id,
-    ps.month,
-    ps.total_sales,
-    round(AVG(ps.total_sales) OVER (PARTITION BY ps.prod_id ORDER BY ps.month GROUPS BETWEEN CURRENT ROW AND 2 FOLLOWING ),2) AS moving_avg_sales    
-    FROM product_sales ps
-    ORDER BY ps.prod_id, ps.month;
+GROUP BY p.prod_id, EXTRACT(YEAR FROM s.time_id), EXTRACT(MONTH FROM s.time_id)
+ORDER BY p.prod_id, month;
 
 /*Third query uses the RANGE mode to retrieve similar revenue calculations for different price ranges (for prices within a 10 dollar difference of the current price).
  * The RANGE frame is used in this case because it allows the window to expand based on the value of amount_sold (price of the product) */
    
-WITH summarized_sales AS (
 SELECT 
-s.amount_sold,  
+s.amount_sold AS price_list, 
 SUM(s.amount_sold) AS total_sales,  
-SUM(s.quantity_sold) AS total_quantity  
+SUM(s.quantity_sold) AS total_quantity,  
+SUM(SUM(s.amount_sold)) OVER (ORDER BY s.amount_sold RANGE BETWEEN 10 PRECEDING AND 10 FOLLOWING) AS similar_revenue
 FROM sh.sales s
-GROUP BY s.amount_sold 
-	SELECT 
-    ss.amount_sold AS price_list, 
-    ss.total_sales,  
-    ss.total_quantity,  
-    SUM(ss.total_sales) OVER (ORDER BY ss.amount_sold RANGE BETWEEN  10 PRECEDING AND  10 FOLLOWING) AS similar_revenue
-	FROM summarized_sales ss
-	ORDER BY price_list desc;
+GROUP BY s.amount_sold
+ORDER BY price_list DESC;
